@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instagram Story Sticker Interface</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      background-color: #000;
+      touch-action: manipulation;
+    }
+
+    .canvas {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background-color: #fff;
+    }
+
+    .sticker-box {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .sticker-box img {
+      height: 80px;
+      cursor: pointer;
+    }
+
+    .sticker {
+      position: absolute;
+      cursor: grab;
+      touch-action: none;
+      transform-origin: center;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 16px;
+      cursor: pointer;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<div class="canvas" id="canvas">
+  <!-- Stickers will be added dynamically here -->
+</div>
+
+<div class="sticker-box">
+  <img src="1.png" alt="Sticker 1" class="sticker-item">
+  <img src="2.png" alt="Sticker 2" class="sticker-item">
+  <img src="3.png" alt="Sticker 3" class="sticker-item">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script>
+  const canvas = document.getElementById('canvas');
+  const stickers = document.querySelectorAll('.sticker-item');
+
+  stickers.forEach(sticker => {
+    sticker.addEventListener('click', () => {
+      const newSticker = document.createElement('img');
+      newSticker.src = sticker.src;
+      newSticker.className = 'sticker';
+      newSticker.style.left = '50%';
+      newSticker.style.top = '50%';
+      newSticker.style.transform = 'translate(-50%, -50%) scale(1) rotate(0deg)';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '×';
+      deleteBtn.className = 'delete-btn';
+
+      newSticker.appendChild(deleteBtn);
+      canvas.appendChild(newSticker);
+
+      makeStickerInteractive(newSticker, deleteBtn);
+    });
+  });
+
+  function makeStickerInteractive(sticker, deleteBtn) {
+    const hammer = new Hammer(sticker);
+    let scale = 1;
+    let rotation = 0;
+
+    hammer.get('pinch').set({ enable: true });
+    hammer.get('rotate').set({ enable: true });
+
+    hammer.on('pinch pinchmove', (ev) => {
+      scale = ev.scale;
+      updateTransform(sticker, scale, rotation);
+    });
+
+    hammer.on('rotate rotatemove', (ev) => {
+      rotation = ev.rotation;
+      updateTransform(sticker, scale, rotation);
+    });
+
+    sticker.addEventListener('pointerdown', (e) => {
+      sticker.style.cursor = 'grabbing';
+      sticker.style.zIndex = Array.from(canvas.children).length;
+
+      const offsetX = e.clientX - sticker.getBoundingClientRect().left;
+      const offsetY = e.clientY - sticker.getBoundingClientRect().top;
+
+      function moveSticker(e) {
+        const rect = canvas.getBoundingClientRect();
+        sticker.style.left = `${e.clientX - rect.left - offsetX}px`;
+        sticker.style.top = `${e.clientY - rect.top - offsetY}px`;
+      }
+
+      function releaseSticker() {
+        sticker.style.cursor = 'grab';
+        document.removeEventListener('pointermove', moveSticker);
+        document.removeEventListener('pointerup', releaseSticker);
+      }
+
+      document.addEventListener('pointermove', moveSticker);
+      document.addEventListener('pointerup', releaseSticker);
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      canvas.removeChild(sticker);
+    });
+  }
+
+  function updateTransform(sticker, scale, rotation) {
+    sticker.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
+  }
+</script>
+
+</body>
+</html>
