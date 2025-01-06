@@ -3,143 +3,190 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sticker Interaction with Interact.js</title>
-  <!-- Include Interact.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.0/dist/interact.min.js"></script>
+  <title>Instagram Story Sticker Interface</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body, html {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
       font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #f0f0f0;
+      overflow: hidden;
+      background-color: #000;
     }
 
-    .sticker-container {
-      width: 100%;
-      max-width: 500px;
-      height: 100%;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
     }
 
     .sticker-box {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
       display: flex;
-      justify-content: space-around;
-      margin-bottom: 20px;
-      width: 100%;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.8);
       overflow-x: auto;
-    }
-
-    .sticker {
-      width: 60px;
-      height: 60px;
-      background-color: #ff6347; /* Placeholder color */
-      border-radius: 50%;
-      cursor: pointer;
-      transition: transform 0.3s ease-in-out;
-    }
-
-    .canvas {
-      position: relative;
-      width: 100%;
-      height: 300px;
-      border: 1px solid #ccc;
-      background-color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-
-    .sticker.transformed {
-      transform: scale(2) rotate(45deg);
+      overflow-y: hidden;
       z-index: 10;
     }
 
+    .sticker-box img {
+      height: 80px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <div class="sticker-container">
-    <div class="sticker-box">
-      <div class="sticker" id="sticker1" style="background-image: url('https://via.placeholder.com/60x60?text=1');"></div>
-      <div class="sticker" id="sticker2" style="background-image: url('https://via.placeholder.com/60x60?text=2');"></div>
-      <div class="sticker" id="sticker3" style="background-image: url('https://via.placeholder.com/60x60?text=3');"></div>
-    </div>
-    <div class="canvas" id="canvas"></div>
-  </div>
+<canvas id="canvas"></canvas>
 
-  <script>
-    // Initialize interact.js for handling drag, scale, and rotate interactions
-    interact('.sticker')
-      .draggable({
-        onstart(event) {
-          // When drag starts, add transformed class
-          event.target.classList.add('transformed');
-          const canvas = document.getElementById('canvas');
-          // Add the sticker to the canvas if not already there
-          if (!canvas.contains(event.target)) {
-            canvas.appendChild(event.target);
-          }
-        },
-        onmove(event) {
-          // Update position while dragging
-          const { x, y } = event.target.getBoundingClientRect();
-          event.target.style.left = `${x + event.dx}px`;
-          event.target.style.top = `${y + event.dy}px`;
-        },
-        onend(event) {
-          // When drag ends, remove transformed class
-          event.target.classList.remove('transformed');
-          // Reset position on end
-          event.target.style.left = '0px';
-          event.target.style.top = '0px';
-        }
-      })
-      .resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        onstart(event) {
-          // When resizing starts, add transformed class
-          event.target.classList.add('transformed');
-        },
-        onmove(event) {
-          // Resize the sticker based on mouse/touch movement
-          const { width, height } = event.rect;
-          event.target.style.width = `${width}px`;
-          event.target.style.height = `${height}px`;
-        },
-        onend(event) {
-          // When resizing ends, remove transformed class
-          event.target.classList.remove('transformed');
-        }
-      })
-      .gesturable({
-        onstart(event) {
-          // When gesture starts, add transformed class
-          event.target.classList.add('transformed');
-        },
-        onmove(event) {
-          // Apply rotation and scale based on gesture
-          const { angle, scale } = event;
-          event.target.style.transform = `scale(${scale}) rotate(${angle}deg)`;
-        },
-        onend(event) {
-          // When gesture ends, remove transformed class
-          event.target.classList.remove('transformed');
-        }
-      });
-  </script>
+<div class="sticker-box">
+  <img src="1.png" alt="Sticker 1" class="sticker-item">
+  <img src="2.png" alt="Sticker 2" class="sticker-item">
+  <img src="3.png" alt="Sticker 3" class="sticker-item">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Set up canvas size
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  const stickers = [];
+  const stickerImages = document.querySelectorAll('.sticker-item');
+
+  let selectedSticker = null;
+  let isDragging = false;
+  let offset = { x: 0, y: 0 };
+
+  let scaleState = 1;  // Separate state for scaling
+  let rotationState = 0;  // Separate state for rotation
+
+  // Load stickers
+  stickerImages.forEach(sticker => {
+    sticker.addEventListener('click', () => {
+      const img = new Image();
+      img.src = sticker.src;
+      img.onload = () => {
+        const newSticker = {
+          img,
+          x: canvas.width / 2 - img.width / 4,
+          y: canvas.height / 2 - img.height / 4,
+          width: img.width / 2,
+          height: img.height / 2,
+          scale: 1,
+          rotation: 0,
+        };
+        stickers.push(newSticker);
+        selectedSticker = newSticker;
+        drawCanvas();
+      };
+    });
+  });
+
+  // Draw stickers on canvas
+  function drawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stickers.forEach(sticker => {
+      ctx.save();
+      ctx.translate(sticker.x + (sticker.width * sticker.scale) / 2, sticker.y + (sticker.height * sticker.scale) / 2);
+      ctx.rotate((sticker.rotation * Math.PI) / 180);
+      ctx.scale(sticker.scale, sticker.scale);
+      ctx.drawImage(
+        sticker.img,
+        -sticker.width / 2,
+        -sticker.height / 2,
+        sticker.width,
+        sticker.height
+      );
+      ctx.restore();
+    });
+  }
+
+  // Hammer.js for gestures
+  const hammer = new Hammer(canvas);
+  hammer.get('pinch').set({ enable: true });
+  hammer.get('rotate').set({ enable: true });
+
+  hammer.on('pinch pinchmove', (ev) => {
+    if (selectedSticker && ev.additionalEvent === 'pinch') {
+      scaleState = Math.max(0.5, Math.min(3, ev.scale));  // Update the scaling state
+      selectedSticker.scale = scaleState;
+      drawCanvas();
+    }
+  });
+
+  hammer.on('rotate rotatemove', (ev) => {
+    if (selectedSticker && ev.additionalEvent === 'rotate') {
+      rotationState += ev.rotation;  // Update the rotation state
+      selectedSticker.rotation = rotationState;
+      drawCanvas();
+    }
+  });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    selectedSticker = stickers.find(
+      sticker =>
+        x > sticker.x &&
+        x < sticker.x + sticker.width * sticker.scale &&
+        y > sticker.y &&
+        y < sticker.y + sticker.height * sticker.scale
+    );
+
+    if (selectedSticker) {
+      isDragging = true;
+      offset = { x: x - selectedSticker.x, y: y - selectedSticker.y };
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (isDragging && selectedSticker) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      selectedSticker.x = x - offset.x;
+      selectedSticker.y = y - offset.y;
+      drawCanvas();
+    }
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+
+  canvas.addEventListener('dblclick', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const index = stickers.findIndex(
+      sticker =>
+        x > sticker.x &&
+        x < sticker.x + sticker.width * sticker.scale &&
+        y > sticker.y &&
+        y < sticker.y + sticker.height * sticker.scale
+    );
+
+    if (index > -1) {
+      stickers.splice(index, 1);
+      drawCanvas();
+    }
+  });
+</script>
 
 </body>
 </html>
