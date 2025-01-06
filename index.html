@@ -44,7 +44,6 @@
 <canvas id="canvas"></canvas>
 
 <div class="sticker-box">
-  <p>23:51</p>
   <img src="1.png" alt="Sticker 1" class="sticker-item">
   <img src="2.png" alt="Sticker 2" class="sticker-item">
   <img src="3.png" alt="Sticker 3" class="sticker-item">
@@ -52,7 +51,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script>
-  <script>
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -70,9 +68,6 @@
   let selectedSticker = null;
   let isDragging = false;
   let offset = { x: 0, y: 0 };
-
-  let scaleState = 1;  // Separate state for scaling
-  let rotationState = 0;  // Separate state for rotation
 
   // Load stickers
   stickerImages.forEach(sticker => {
@@ -120,36 +115,17 @@
   hammer.get('pinch').set({ enable: true });
   hammer.get('rotate').set({ enable: true });
 
-  let ongoingPinch = false;
-  let ongoingRotate = false;
-
-  hammer.on('pinchstart pinchmove', (ev) => {
-    if (selectedSticker && !ongoingRotate) {
-      ongoingPinch = true;
-      selectedSticker.scale = Math.max(0.5, Math.min(3, ev.scale * scaleState));
+  hammer.on('pinch pinchmove', (ev) => {
+    if (selectedSticker) {
+      selectedSticker.scale = Math.max(0.5, Math.min(3, ev.scale));
       drawCanvas();
     }
   });
 
-  hammer.on('rotate start rotatemove', (ev) => {
-    if (selectedSticker && !ongoingPinch) {
-      ongoingRotate = true;
-      selectedSticker.rotation = rotationState + ev.rotation;
+  hammer.on('rotate rotatemove', (ev) => {
+    if (selectedSticker) {
+      selectedSticker.rotation += ev.rotation;
       drawCanvas();
-    }
-  });
-
-  hammer.on('pinchend', (ev) => {
-    if (selectedSticker) {
-      ongoingPinch = false;
-      scaleState = selectedSticker.scale;  // Store the current scale
-    }
-  });
-
-  hammer.on('rotateend', (ev) => {
-    if (selectedSticker) {
-      ongoingRotate = false;
-      rotationState = selectedSticker.rotation;  // Store the current rotation
     }
   });
 
@@ -205,8 +181,6 @@
       drawCanvas();
     }
   });
-</script>
-
 </script>
 
 </body>
