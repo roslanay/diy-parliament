@@ -45,8 +45,8 @@
 
 <div class="sticker-box">
   <img src="1.png" alt="Sticker 1" class="sticker-item">
-  <img src="2.png" alt="Sticker 2" class="sticker-item">
-  <img src="sticker3.png" alt="Sticker 3" class="sticker-item">
+  <img src="sticker2.png" alt="Sticker 2" class="sticker-item">
+  <img src="3.png" alt="Sticker 3" class="sticker-item">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
@@ -69,10 +69,11 @@
   let isDragging = false;
   let offset = { x: 0, y: 0 };
 
+  // Track scaling and rotation values
   let imageSize = 1;
-  let preAngle = 0;
-  let rotateAngle = 0;
-  let currentAngle = 0;
+  let rotationAngle = 0;
+  let initialPinchDistance = 0;
+  let initialPinchAngle = 0;
 
   // Load stickers
   stickerImages.forEach(sticker => {
@@ -115,29 +116,32 @@
     });
   }
 
-  // Hammer.js for gestures
+  // Hammer.js for pinch gestures
   const hammer = new Hammer(canvas);
   hammer.get('pinch').set({ enable: true });
 
-  hammer.on("pinchmove", function(e) {
-    if (preAngle == 0) {
-      // Record the previous angle
-      preAngle = Math.round(e.rotation);
-    } else {
-      currentAngle = (rotateAngle + Math.round(e.rotation) - preAngle);
-      selectedSticker.scale = imageSize * e.scale;
+  hammer.on("pinchstart", function(e) {
+    // Store the initial values of scale and rotation
+    initialPinchDistance = e.scale;
+    initialPinchAngle = e.rotation;
+  });
 
-      // Apply scale and rotation together
-      selectedSticker.rotation = currentAngle;
-      drawCanvas();
-    }
+  hammer.on("pinchmove", function(e) {
+    // Calculate scale and rotation independently
+    const scaleChange = e.scale / initialPinchDistance;
+    selectedSticker.scale = imageSize * scaleChange;
+
+    // Calculate rotation
+    const angleChange = e.rotation - initialPinchAngle;
+    selectedSticker.rotation = rotationAngle + angleChange;
+
+    drawCanvas();
   });
 
   hammer.on("pinchend", function(e) {
-    // Finalize the image size and rotation angle
+    // Save the final values of scale and rotation
     imageSize = selectedSticker.scale;
-    rotateAngle = currentAngle;
-    preAngle = 0;
+    rotationAngle = selectedSticker.rotation;
   });
 
   // Dragging event handlers
