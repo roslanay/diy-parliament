@@ -44,9 +44,10 @@
 <canvas id="canvas"></canvas>
 
 <div class="sticker-box">
-  <img src="1.png" alt="Sticker 1" class="sticker-item">
-  <img src="2.png" alt="Sticker 2" class="sticker-item">
-  <img src="3.png" alt="Sticker 3" class="sticker-item">
+  <p color="white">0:40</p>
+  <img src="sticker1.png" alt="Sticker 1" class="sticker-item">
+  <img src="sticker2.png" alt="Sticker 2" class="sticker-item">
+  <img src="sticker3.png" alt="Sticker 3" class="sticker-item">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
@@ -118,16 +119,20 @@
   hammer.get('pinch').set({ enable: true });
   hammer.get('rotate').set({ enable: true });
 
+  // Handle pinch scale separately
   hammer.on('pinch pinchmove', (ev) => {
     if (selectedSticker && ev.additionalEvent === 'pinch') {
+      // Only update scale, not rotation
       scaleState = Math.max(0.5, Math.min(3, ev.scale));  // Update the scaling state
       selectedSticker.scale = scaleState;
       drawCanvas();
     }
   });
 
+  // Handle rotation separately
   hammer.on('rotate rotatemove', (ev) => {
     if (selectedSticker && ev.additionalEvent === 'rotate') {
+      // Only update rotation, not scale
       rotationState += ev.rotation;  // Update the rotation state
       selectedSticker.rotation = rotationState;
       drawCanvas();
