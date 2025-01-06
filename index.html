@@ -10,14 +10,12 @@
       font-family: Arial, sans-serif;
       overflow: hidden;
       background-color: #000;
-      touch-action: manipulation;
     }
 
-    .canvas {
-      position: relative;
+    canvas {
+      display: block;
       width: 100vw;
       height: 100vh;
-      background-color: #fff;
     }
 
     .sticker-box {
@@ -32,125 +30,156 @@
       background: rgba(0, 0, 0, 0.8);
       overflow-x: auto;
       overflow-y: hidden;
+      z-index: 10;
     }
 
     .sticker-box img {
       height: 80px;
       cursor: pointer;
     }
-
-    .sticker {
-      position: absolute;
-      cursor: grab;
-      touch-action: none;
-      transform-origin: center;
-    }
-
-    .delete-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: red;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 16px;
-      cursor: pointer;
-      z-index: 9999;
-    }
   </style>
 </head>
 <body>
 
-<div class="canvas" id="canvas">
-  <!-- Stickers will be added dynamically here -->
-</div>
+<canvas id="canvas"></canvas>
 
 <div class="sticker-box">
-  <img src="1.png" alt="Sticker 1" class="sticker-item">
-  <img src="2.png" alt="Sticker 2" class="sticker-item">
-  <img src="3.png" alt="Sticker 3" class="sticker-item">
+  <img src="sticker1.png" alt="Sticker 1" class="sticker-item">
+  <img src="sticker2.png" alt="Sticker 2" class="sticker-item">
+  <img src="sticker3.png" alt="Sticker 3" class="sticker-item">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script>
   const canvas = document.getElementById('canvas');
-  const stickers = document.querySelectorAll('.sticker-item');
+  const ctx = canvas.getContext('2d');
 
-  stickers.forEach(sticker => {
+  // Set up canvas size
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  const stickers = [];
+  const stickerImages = document.querySelectorAll('.sticker-item');
+
+  let selectedSticker = null;
+  let isDragging = false;
+
+  // Load stickers
+  stickerImages.forEach(sticker => {
     sticker.addEventListener('click', () => {
-      const newSticker = document.createElement('img');
-      newSticker.src = sticker.src;
-      newSticker.className = 'sticker';
-      newSticker.style.left = '50%';
-      newSticker.style.top = '50%';
-      newSticker.style.transform = 'translate(-50%, -50%) scale(1) rotate(0deg)';
-      
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = '×';
-      deleteBtn.className = 'delete-btn';
-
-      newSticker.appendChild(deleteBtn);
-      canvas.appendChild(newSticker);
-
-      makeStickerInteractive(newSticker, deleteBtn);
+      const img = new Image();
+      img.src = sticker.src;
+      img.onload = () => {
+        const newSticker = {
+          img,
+          x: canvas.width / 2 - img.width / 4,
+          y: canvas.height / 2 - img.height / 4,
+          width: img.width / 2,
+          height: img.height / 2,
+          scale: 1,
+          rotation: 0,
+        };
+        stickers.push(newSticker);
+        selectedSticker = newSticker;
+        drawCanvas();
+      };
     });
   });
 
-  function makeStickerInteractive(sticker, deleteBtn) {
-    const hammer = new Hammer(sticker);
-    let scale = 1;
-    let rotation = 0;
-
-    hammer.get('pinch').set({ enable: true });
-    hammer.get('rotate').set({ enable: true });
-
-    hammer.on('pinch pinchmove', (ev) => {
-      scale = ev.scale;
-      updateTransform(sticker, scale, rotation);
-    });
-
-    hammer.on('rotate rotatemove', (ev) => {
-      rotation = ev.rotation;
-      updateTransform(sticker, scale, rotation);
-    });
-
-    sticker.addEventListener('pointerdown', (e) => {
-      sticker.style.cursor = 'grabbing';
-      sticker.style.zIndex = Array.from(canvas.children).length;
-
-      const offsetX = e.clientX - sticker.getBoundingClientRect().left;
-      const offsetY = e.clientY - sticker.getBoundingClientRect().top;
-
-      function moveSticker(e) {
-        const rect = canvas.getBoundingClientRect();
-        sticker.style.left = `${e.clientX - rect.left - offsetX}px`;
-        sticker.style.top = `${e.clientY - rect.top - offsetY}px`;
-      }
-
-      function releaseSticker() {
-        sticker.style.cursor = 'grab';
-        document.removeEventListener('pointermove', moveSticker);
-        document.removeEventListener('pointerup', releaseSticker);
-      }
-
-      document.addEventListener('pointermove', moveSticker);
-      document.addEventListener('pointerup', releaseSticker);
-    });
-
-    deleteBtn.addEventListener('click', () => {
-      canvas.removeChild(sticker);
+  // Draw stickers on canvas
+  function drawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stickers.forEach(sticker => {
+      ctx.save();
+      ctx.translate(sticker.x + sticker.width / 2, sticker.y + sticker.height / 2);
+      ctx.rotate((sticker.rotation * Math.PI) / 180);
+      ctx.scale(sticker.scale, sticker.scale);
+      ctx.drawImage(
+        sticker.img,
+        -sticker.width / 2,
+        -sticker.height / 2,
+        sticker.width,
+        sticker.height
+      );
+      ctx.restore();
     });
   }
 
-  function updateTransform(sticker, scale, rotation) {
-    sticker.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
-  }
+  // Hammer.js for gestures
+  const hammer = new Hammer(canvas);
+  hammer.get('pinch').set({ enable: true });
+  hammer.get('rotate').set({ enable: true });
+
+  hammer.on('pinch pinchmove', (ev) => {
+    if (selectedSticker) {
+      selectedSticker.scale = Math.max(0.5, Math.min(3, ev.scale));
+      drawCanvas();
+    }
+  });
+
+  hammer.on('rotate rotatemove', (ev) => {
+    if (selectedSticker) {
+      selectedSticker.rotation = ev.rotation;
+      drawCanvas();
+    }
+  });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    selectedSticker = stickers.find(
+      sticker =>
+        x > sticker.x &&
+        x < sticker.x + sticker.width &&
+        y > sticker.y &&
+        y < sticker.y + sticker.height
+    );
+
+    if (selectedSticker) {
+      isDragging = true;
+      offset = { x: x - selectedSticker.x, y: y - selectedSticker.y };
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (isDragging && selectedSticker) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      selectedSticker.x = x - offset.x;
+      selectedSticker.y = y - offset.y;
+      drawCanvas();
+    }
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+
+  canvas.addEventListener('dblclick', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const index = stickers.findIndex(
+      sticker =>
+        x > sticker.x &&
+        x < sticker.x + sticker.width &&
+        y > sticker.y &&
+        y < sticker.y + sticker.height
+    );
+
+    if (index > -1) {
+      stickers.splice(index, 1);
+      drawCanvas();
+    }
+  });
 </script>
 
 </body>
