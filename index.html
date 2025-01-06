@@ -67,6 +67,7 @@
 
   let selectedSticker = null;
   let isDragging = false;
+  let offset = { x: 0, y: 0 };
 
   // Load stickers
   stickerImages.forEach(sticker => {
@@ -95,7 +96,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     stickers.forEach(sticker => {
       ctx.save();
-      ctx.translate(sticker.x + sticker.width / 2, sticker.y + sticker.height / 2);
+      ctx.translate(sticker.x + (sticker.width * sticker.scale) / 2, sticker.y + (sticker.height * sticker.scale) / 2);
       ctx.rotate((sticker.rotation * Math.PI) / 180);
       ctx.scale(sticker.scale, sticker.scale);
       ctx.drawImage(
@@ -123,7 +124,7 @@
 
   hammer.on('rotate rotatemove', (ev) => {
     if (selectedSticker) {
-      selectedSticker.rotation = ev.rotation;
+      selectedSticker.rotation += ev.rotation;
       drawCanvas();
     }
   });
@@ -136,9 +137,9 @@
     selectedSticker = stickers.find(
       sticker =>
         x > sticker.x &&
-        x < sticker.x + sticker.width &&
+        x < sticker.x + sticker.width * sticker.scale &&
         y > sticker.y &&
-        y < sticker.y + sticker.height
+        y < sticker.y + sticker.height * sticker.scale
     );
 
     if (selectedSticker) {
@@ -170,9 +171,9 @@
     const index = stickers.findIndex(
       sticker =>
         x > sticker.x &&
-        x < sticker.x + sticker.width &&
+        x < sticker.x + sticker.width * sticker.scale &&
         y > sticker.y &&
-        y < sticker.y + sticker.height
+        y < sticker.y + sticker.height * sticker.scale
     );
 
     if (index > -1) {
