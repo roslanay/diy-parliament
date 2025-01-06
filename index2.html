@@ -44,10 +44,9 @@
 <canvas id="canvas"></canvas>
 
 <div class="sticker-box">
-  <p color="white">0:40</p>
   <img src="1.png" alt="Sticker 1" class="sticker-item">
   <img src="2.png" alt="Sticker 2" class="sticker-item">
-  <img src="3.png" alt="Sticker 3" class="sticker-item">
+  <img src="sticker3.png" alt="Sticker 3" class="sticker-item">
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
@@ -70,8 +69,10 @@
   let isDragging = false;
   let offset = { x: 0, y: 0 };
 
-  let scaleState = 1;  // Separate state for scaling
-  let rotationState = 0;  // Separate state for rotation
+  let imageSize = 1;
+  let preAngle = 0;
+  let rotateAngle = 0;
+  let currentAngle = 0;
 
   // Load stickers
   stickerImages.forEach(sticker => {
@@ -117,28 +118,29 @@
   // Hammer.js for gestures
   const hammer = new Hammer(canvas);
   hammer.get('pinch').set({ enable: true });
-  hammer.get('rotate').set({ enable: true });
 
-  // Handle pinch scale separately
-  hammer.on('pinch pinchmove', (ev) => {
-    if (selectedSticker && ev.additionalEvent === 'pinch') {
-      // Only update scale, not rotation
-      scaleState = Math.max(0.5, Math.min(3, ev.scale));  // Update the scaling state
-      selectedSticker.scale = scaleState;
+  hammer.on("pinchmove", function(e) {
+    if (preAngle == 0) {
+      // Record the previous angle
+      preAngle = Math.round(e.rotation);
+    } else {
+      currentAngle = (rotateAngle + Math.round(e.rotation) - preAngle);
+      selectedSticker.scale = imageSize * e.scale;
+
+      // Apply scale and rotation together
+      selectedSticker.rotation = currentAngle;
       drawCanvas();
     }
   });
 
-  // Handle rotation separately
-  hammer.on('rotate rotatemove', (ev) => {
-    if (selectedSticker && ev.additionalEvent === 'rotate') {
-      // Only update rotation, not scale
-      rotationState += ev.rotation;  // Update the rotation state
-      selectedSticker.rotation = rotationState;
-      drawCanvas();
-    }
+  hammer.on("pinchend", function(e) {
+    // Finalize the image size and rotation angle
+    imageSize = selectedSticker.scale;
+    rotateAngle = currentAngle;
+    preAngle = 0;
   });
 
+  // Dragging event handlers
   canvas.addEventListener('pointerdown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
