@@ -15,13 +15,11 @@
     </style>
 </head>
 <body>
-    <h1>21:25</h1>
     <canvas id="canvas"></canvas>
-    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
     <script>
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
-        
+
         // Sticker data
         const stickers = [
             {
@@ -35,7 +33,17 @@
                 isActive: false,
             },
         ];
-        
+
+        // Preload images
+        stickers.forEach(sticker => {
+            const img = new Image();
+            img.src = "1.png"; // Replace with your actual image source
+            img.onload = () => {
+                sticker.image = img;
+                drawAllStickers(); // Redraw canvas after loading
+            };
+        });
+
         // Responsive canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -45,107 +53,56 @@
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();
 
-
-        // Load sticker image
-        const image = new Image();
-        image.src = "1.png"; // Replace with the path to your sticker image
-        image.onload = () => {
-            stickers[0].image = image;
-            drawAllStickers();
-        };
-
         // Draw all stickers
         function drawAllStickers() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            stickers.forEach((sticker) => {
-                drawSticker(sticker);
-            });
+            stickers.forEach(sticker => drawSticker(sticker));
         }
 
-        // Draw a single sticker
+        // Draw individual sticker
         function drawSticker(sticker) {
-            const { x, y, width, height, scale, rotation, image } = sticker;
-
+            if (!sticker.image) return; // Skip if the image is not loaded
             ctx.save();
-            ctx.translate(x, y);
-            ctx.scale(scale, scale);
-            ctx.rotate((rotation * Math.PI) / 180);
-            ctx.drawImage(image, -width / 2, -height / 2, width, height);
+            ctx.translate(sticker.x, sticker.y);
+            ctx.rotate((sticker.rotation * Math.PI) / 180);
+            ctx.scale(sticker.scale, sticker.scale);
+            ctx.drawImage(
+                sticker.image,
+                -sticker.width / 2,
+                -sticker.height / 2,
+                sticker.width,
+                sticker.height
+            );
             ctx.restore();
         }
 
-        // Gesture handling
-        const hammer = new Hammer(canvas);
-        let activeSticker = null;
-        let startScale = 1;
-        let startRotation = 0;
-
-        // Detect tap to select a sticker
-        hammer.on("tap", (e) => {
-            const { x, y } = getCanvasCoordinates(e.center.x, e.center.y);
-            activeSticker = findStickerUnderPoint(x, y);
-            stickers.forEach((sticker) => (sticker.isActive = sticker === activeSticker));
-            drawAllStickers();
+        // Example interaction logic
+        canvas.addEventListener("pointerdown", (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            stickers.forEach(sticker => {
+                const withinX = x >= sticker.x && x <= sticker.x + sticker.width;
+                const withinY = y >= sticker.y && y <= sticker.y + sticker.height;
+                sticker.isActive = withinX && withinY;
+            });
         });
 
-        // Pan (move)
-        hammer.get("pan").set({ direction: Hammer.DIRECTION_ALL });
-        hammer.on("panstart", () => {
-            if (activeSticker) activeSticker.isMoving = true;
-        });
-        hammer.on("panmove", (e) => {
-            if (activeSticker) {
-                activeSticker.x += e.deltaX;
-                activeSticker.y += e.deltaY;
-                drawAllStickers();
-            }
-        });
-        hammer.on("panend", () => {
-            if (activeSticker) activeSticker.isMoving = false;
+        canvas.addEventListener("pointermove", (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            stickers.forEach(sticker => {
+                if (sticker.isActive) {
+                    sticker.x = x;
+                    sticker.y = y;
+                    drawAllStickers();
+                }
+            });
         });
 
-        // Pinch (scale)
-        hammer.get("pinch").set({ enable: true });
-        hammer.on("pinchstart", () => {
-            if (activeSticker) startScale = activeSticker.scale;
+        canvas.addEventListener("pointerup", () => {
+            stickers.forEach(sticker => (sticker.isActive = false));
         });
-        hammer.on("pinchmove", (e) => {
-            if (activeSticker) {
-                activeSticker.scale = Math.max(0.5, Math.min(startScale * e.scale, 3));
-                drawAllStickers();
-            }
-        });
-
-        // Rotate
-        hammer.get("rotate").set({ enable: true });
-        hammer.on("rotatestart", () => {
-            if (activeSticker) startRotation = activeSticker.rotation;
-        });
-        hammer.on("rotatemove", (e) => {
-            if (activeSticker) {
-                activeSticker.rotation = startRotation + e.rotation;
-                drawAllStickers();
-            }
-        });
-
-        // Utility functions
-        function getCanvasCoordinates(clientX, clientY) {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top,
-            };
-        }
-
-        function findStickerUnderPoint(x, y) {
-            return stickers.find(
-                (sticker) =>
-                    x > sticker.x - sticker.width / 2 &&
-                    x < sticker.x + sticker.width / 2 &&
-                    y > sticker.y - sticker.height / 2 &&
-                    y < sticker.y + sticker.height / 2
-            );
-        }
     </script>
 </body>
 </html>
+
