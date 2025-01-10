@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticker Interaction</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scroll */
+            touch-action: none; /* Important for smooth gestures */
+        }
+        #sticker {
+            width: 100px;
+            height: 100px;
+            background: pink;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            touch-action: none; /* Required for Hammer.js gestures */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="sticker"></div>
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+    <script>
+        const sticker = document.getElementById("sticker");
+        const hammer = new Hammer(sticker);
+
+        // Initialize transformation state
+        let transform = {
+            translate: { x: window.innerWidth / 2 - 50, y: window.innerHeight / 2 - 50 },
+            scale: 1,
+            rotation: 0,
+        };
+
+        // Current delta values for gestures
+        let currentDelta = { x: 0, y: 0 };
+
+        // Enable gestures
+        hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+        hammer.get('pinch').set({ enable: true });
+        hammer.get('rotate').set({ enable: true });
+
+        // Allow pinch and rotate gestures to recognize simultaneously
+        hammer.get('pinch').recognizeWith('rotate');
+
+        hammer.on("panmove", (e) => {
+            // Update the delta for translation
+            currentDelta.x = e.deltaX;
+            currentDelta.y = e.deltaY;
+
+            const newX = transform.translate.x + currentDelta.x;
+            const newY = transform.translate.y + currentDelta.y;
+
+            // Constrain movement to viewport
+            transform.translate.x = Math.min(Math.max(newX, 0), window.innerWidth - sticker.offsetWidth);
+            transform.translate.y = Math.min(Math.max(newY, 0), window.innerHeight - sticker.offsetHeight);
+
+            updateTransform();
+        });
+
+        hammer.on("panend", () => {
+            // Apply delta and reset it
+            transform.translate.x += currentDelta.x;
+            transform.translate.y += currentDelta.y;
+            currentDelta = { x: 0, y: 0 };
+        });
+
+        hammer.on("pinchmove", (e) => {
+            // Update scaling with constraints
+            transform.scale = Math.max(0.5, Math.min(e.scale, 3)); // Constrain scaling between 0.5x and 3x
+            updateTransform();
+        });
+
+        hammer.on("rotatemove", (e) => {
+            // Update rotation
+            transform.rotation += e.rotation;
+            updateTransform();
+        });
+
+        function updateTransform() {
+            sticker.style.transform = `
+                translate(${transform.translate.x}px, ${transform.translate.y}px)
+                scale(${transform.scale})
+                rotate(${transform.rotation}deg)
+            `;
+        }
+    </script>
+</body>
+</html>
