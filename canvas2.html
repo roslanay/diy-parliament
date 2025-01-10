@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Interactive Stickers</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            touch-action: none; /* Prevent default gestures */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="stickerCanvas"></canvas>
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+    <script>
+        const canvas = document.getElementById('stickerCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize canvas to fit the screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawAllStickers();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Stickers data
+        let stickers = [
+            { x: 100, y: 100, width: 100, height: 100, image: null, scale: 1, rotation: 0, isActive: false }
+        ];
+
+        // Load sticker images
+        const stickerImage = new Image();
+        stickerImage.src = '1.png';
+        stickerImage.onload = () => {
+            stickers[0].image = stickerImage;
+            drawAllStickers();
+        };
+
+        // Draw all stickers
+        function drawAllStickers() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stickers.forEach(drawSticker);
+        }
+
+        // Draw a single sticker
+        function drawSticker(sticker) {
+            if (!sticker.image) return;
+
+            ctx.save();
+            ctx.translate(sticker.x, sticker.y);
+            ctx.scale(sticker.scale, sticker.scale);
+            ctx.rotate(sticker.rotation * Math.PI / 180);
+            ctx.drawImage(sticker.image, -sticker.width / 2, -sticker.height / 2, sticker.width, sticker.height);
+            ctx.restore();
+        }
+
+        // Initialize Hammer.js for gestures
+        const hammer = new Hammer.Manager(canvas);
+
+        // Add gestures
+        hammer.add(new Hammer.Pinch());
+        hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
+
+        let activeSticker = null;
+
+        // Detect tap to select a sticker
+        hammer.on('tap', (e) => {
+            const { x, y } = getEventPosition(e.center.x, e.center.y);
+            activeSticker = stickers.find(sticker =>
+                x >= sticker.x - sticker.width / 2 &&
+                x <= sticker.x + sticker.width / 2 &&
+                y >= sticker.y - sticker.height / 2 &&
+                y <= sticker.y + sticker.height / 2
+            );
+            stickers.forEach(sticker => sticker.isActive = sticker === activeSticker);
+        });
+
+        // Pan gesture
+        hammer.on('panmove', (e) => {
+            if (!activeSticker) return;
+
+            activeSticker.x += e.deltaX;
+            activeSticker.y += e.deltaY;
+            drawAllStickers();
+        });
+
+        // Pinch gesture
+        hammer.on('pinchmove', (e) => {
+            if (!activeSticker) return;
+
+            activeSticker.scale = Math.max(0.5, Math.min(3, activeSticker.scale * e.scale)); // Constrain scaling
+            drawAllStickers();
+        });
+
+        // Helper: Convert event coordinates to canvas coordinates
+        function getEventPosition(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Initial setup
+        resizeCanvas();
+    </script>
+</body>
+</html>
