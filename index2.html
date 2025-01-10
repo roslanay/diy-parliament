@@ -1,203 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Instagram Story Sticker Interface</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-      background-color: #000;
-    }
-
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    .sticker-box {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 100px;
-      display: flex;
-      gap: 10px;
-      padding: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      overflow-x: auto;
-      overflow-y: hidden;
-      z-index: 10;
-    }
-
-    .sticker-box img {
-      height: 80px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Story Sticker</title>
+    <style>
+        #sticker {
+            width: 100px;
+            height: 100px;
+            background: pink;
+            position: absolute;
+            top: 100px;
+            left: 100px;
+            touch-action: none; /* Important for gesture handling */
+        }
+    </style>
 </head>
 <body>
+   
+    <img id="sticker" src="1.png" alt="Girl in a jacket" width="500" height="600">
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+    <script>
+        const sticker = document.getElementById("sticker");
+        const hammer = new Hammer(sticker);
 
-<canvas id="canvas"></canvas>
+        // Enable pan, pinch, and rotate gestures
+        hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+        hammer.get('pinch').set({ enable: true });
+        hammer.get('rotate').set({ enable: true });
 
-<div class="sticker-box">
-  <img src="1.png" alt="Sticker 1" class="sticker-item">
-  <img src="sticker2.png" alt="Sticker 2" class="sticker-item">
-  <img src="3.png" alt="Sticker 3" class="sticker-item">
-</div>
+        // Allow pinch and rotate to recognize simultaneously
+        hammer.get('pinch').recognizeWith('rotate');
 
-<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-<script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-
-  // Set up canvas size
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas();
-
-  const stickers = [];
-  const stickerImages = document.querySelectorAll('.sticker-item');
-
-  let selectedSticker = null;
-  let isDragging = false;
-  let offset = { x: 0, y: 0 };
-
-  // Track scaling and rotation values
-  let imageSize = 1;
-  let rotationAngle = 0;
-  let initialPinchDistance = 0;
-  let initialPinchAngle = 0;
-
-  // Load stickers
-  stickerImages.forEach(sticker => {
-    sticker.addEventListener('click', () => {
-      const img = new Image();
-      img.src = sticker.src;
-      img.onload = () => {
-        const newSticker = {
-          img,
-          x: canvas.width / 2 - img.width / 4,
-          y: canvas.height / 2 - img.height / 4,
-          width: img.width / 2,
-          height: img.height / 2,
-          scale: 1,
-          rotation: 0,
+        let transform = {
+            translate: { x: 0, y: 0 },
+            scale: 1,
+            rotation: 0,
         };
-        stickers.push(newSticker);
-        selectedSticker = newSticker;
-        drawCanvas();
-      };
-    });
-  });
 
-  // Draw stickers on canvas
-  function drawCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    stickers.forEach(sticker => {
-      ctx.save();
-      ctx.translate(sticker.x + (sticker.width * sticker.scale) / 2, sticker.y + (sticker.height * sticker.scale) / 2);
-      ctx.rotate((sticker.rotation * Math.PI) / 180);
-      ctx.scale(sticker.scale, sticker.scale);
-      ctx.drawImage(
-        sticker.img,
-        -sticker.width / 2,
-        -sticker.height / 2,
-        sticker.width,
-        sticker.height
-      );
-      ctx.restore();
-    });
-  }
+        hammer.on("panmove", (e) => {
+            transform.translate.x += e.deltaX;
+            transform.translate.y += e.deltaY;
+            updateTransform();
+        });
 
-  // Hammer.js for pinch gestures
-  const hammer = new Hammer(canvas);
-  hammer.get('pinch').set({ enable: true });
+        hammer.on("pinchmove", (e) => {
+            transform.scale = e.scale;
+            updateTransform();
+        });
 
-  hammer.on("pinchstart", function(e) {
-    // Store the initial values of scale and rotation
-    initialPinchDistance = e.scale;
-    initialPinchAngle = e.rotation;
-  });
+        hammer.on("rotatemove", (e) => {
+            transform.rotation = e.rotation;
+            updateTransform();
+        });
 
-  hammer.on("pinchmove", function(e) {
-    // Calculate scale and rotation independently
-    const scaleChange = e.scale / initialPinchDistance;
-    selectedSticker.scale = imageSize * scaleChange;
-
-    // Calculate rotation
-    const angleChange = e.rotation - initialPinchAngle;
-    selectedSticker.rotation = rotationAngle + angleChange;
-
-    drawCanvas();
-  });
-
-  hammer.on("pinchend", function(e) {
-    // Save the final values of scale and rotation
-    imageSize = selectedSticker.scale;
-    rotationAngle = selectedSticker.rotation;
-  });
-
-  // Dragging event handlers
-  canvas.addEventListener('pointerdown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    selectedSticker = stickers.find(
-      sticker =>
-        x > sticker.x &&
-        x < sticker.x + sticker.width * sticker.scale &&
-        y > sticker.y &&
-        y < sticker.y + sticker.height * sticker.scale
-    );
-
-    if (selectedSticker) {
-      isDragging = true;
-      offset = { x: x - selectedSticker.x, y: y - selectedSticker.y };
-    }
-  });
-
-  canvas.addEventListener('pointermove', (e) => {
-    if (isDragging && selectedSticker) {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      selectedSticker.x = x - offset.x;
-      selectedSticker.y = y - offset.y;
-      drawCanvas();
-    }
-  });
-
-  canvas.addEventListener('pointerup', () => {
-    isDragging = false;
-  });
-
-  canvas.addEventListener('dblclick', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const index = stickers.findIndex(
-      sticker =>
-        x > sticker.x &&
-        x < sticker.x + sticker.width * sticker.scale &&
-        y > sticker.y &&
-        y < sticker.y + sticker.height * sticker.scale
-    );
-
-    if (index > -1) {
-      stickers.splice(index, 1);
-      drawCanvas();
-    }
-  });
-</script>
-
+        function updateTransform() {
+            sticker.style.transform = `
+                translate(${transform.translate.x}px, ${transform.translate.y}px)
+                scale(${transform.scale})
+                rotate(${transform.rotation}deg)
+            `;
+        }
+    </script>
 </body>
 </html>
