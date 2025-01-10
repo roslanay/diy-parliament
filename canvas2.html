@@ -81,6 +81,7 @@
                 y <= sticker.y + sticker.height / 2
             );
             stickers.forEach(sticker => sticker.isActive = sticker === activeSticker);
+            drawAllStickers(); // Redraw to highlight the active sticker
         });
 
         // Pan gesture
