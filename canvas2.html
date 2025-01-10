@@ -2,116 +2,199 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>21:56 Interactive Stickers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Stickers</title>
     <style>
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
+            font-family: Arial, sans-serif;
         }
         canvas {
             display: block;
-            touch-action: none; /* Prevent default gestures */
+        }
+        /* Pop-up container styles */
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .popup-content img {
+            width: 50px;
+            height: 50px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .popup-content button {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <canvas id="stickerCanvas"></canvas>
-    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
-    <script>
-        const canvas = document.getElementById('stickerCanvas');
-        const ctx = canvas.getContext('2d');
+    <canvas id="canvas"></canvas>
 
-        // Resize canvas to fit the screen
+    <!-- Pop-up container -->
+    <div class="popup" id="stickerPopup">
+        <div class="popup-content">
+            <h3>Select Stickers</h3>
+            <div id="stickerSelection">
+                <!-- Sticker images will be dynamically added here -->
+            </div>
+            <button onclick="closePopup()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Sticker data
+        const stickers = [
+            {
+                x: 100,
+                y: 100,
+                width: 100,
+                height: 100,
+                scale: 1,
+                rotation: 0,
+                image: null,
+                isActive: false,
+            },
+            // Add more stickers with different images
+            {
+                x: 200,
+                y: 100,
+                width: 100,
+                height: 100,
+                scale: 1,
+                rotation: 0,
+                image: null,
+                isActive: false,
+            }
+        ];
+
+        // Preload images for stickers
+        const stickerImages = ["1.png", "2.png"]; // Replace with your actual image sources
+        stickers.forEach((sticker, index) => {
+            const img = new Image();
+            img.src = stickerImages[index];
+            img.onload = () => {
+                sticker.image = img;
+                drawAllStickers(); // Redraw canvas after loading
+            };
+        });
+
+        // Responsive canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             drawAllStickers();
         }
-        window.addEventListener('resize', resizeCanvas);
-
-        // Stickers data
-        let stickers = [
-            { x: 100, y: 100, width: 100, height: 100, image: null, scale: 1, rotation: 0, isActive: false }
-        ];
-
-        // Load sticker images
-        const stickerImage = new Image();
-        stickerImage.src = '1.png';
-        stickerImage.onload = () => {
-            stickers[0].image = stickerImage;
-            drawAllStickers();
-        };
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
 
         // Draw all stickers
         function drawAllStickers() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            stickers.forEach(drawSticker);
+            stickers.forEach(sticker => drawSticker(sticker));
         }
 
-        // Draw a single sticker
+        // Draw individual sticker
         function drawSticker(sticker) {
-            if (!sticker.image) return;
-
+            if (!sticker.image) return; // Skip if the image is not loaded
             ctx.save();
             ctx.translate(sticker.x, sticker.y);
+            ctx.rotate((sticker.rotation * Math.PI) / 180);
             ctx.scale(sticker.scale, sticker.scale);
-            ctx.rotate(sticker.rotation * Math.PI / 180);
-            ctx.drawImage(sticker.image, -sticker.width / 2, -sticker.height / 2, sticker.width, sticker.height);
+            ctx.drawImage(
+                sticker.image,
+                -sticker.width / 2,
+                -sticker.height / 2,
+                sticker.width,
+                sticker.height
+            );
             ctx.restore();
         }
 
-        // Initialize Hammer.js for gestures
-        const hammer = new Hammer.Manager(canvas);
-
-        // Add gestures
-        hammer.add(new Hammer.Pinch());
-        hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
-
-        let activeSticker = null;
-
-        // Detect tap to select a sticker
-        hammer.on('tap', (e) => {
-            const { x, y } = getEventPosition(e.center.x, e.center.y);
-            activeSticker = stickers.find(sticker =>
-                x >= sticker.x - sticker.width / 2 &&
-                x <= sticker.x + sticker.width / 2 &&
-                y >= sticker.y - sticker.height / 2 &&
-                y <= sticker.y + sticker.height / 2
-            );
-            stickers.forEach(sticker => sticker.isActive = sticker === activeSticker);
-            drawAllStickers(); // Redraw to highlight the active sticker
+        // Example interaction logic
+        canvas.addEventListener("pointerdown", (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            stickers.forEach(sticker => {
+                const withinX = x >= sticker.x && x <= sticker.x + sticker.width;
+                const withinY = y >= sticker.y && y <= sticker.y + sticker.height;
+                sticker.isActive = withinX && withinY;
+            });
         });
 
-        // Pan gesture
-        hammer.on('panmove', (e) => {
-            if (!activeSticker) return;
-
-            activeSticker.x += e.deltaX;
-            activeSticker.y += e.deltaY;
-            drawAllStickers();
+        canvas.addEventListener("pointermove", (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            stickers.forEach(sticker => {
+                if (sticker.isActive) {
+                    sticker.x = x;
+                    sticker.y = y;
+                    drawAllStickers();
+                }
+            });
         });
 
-        // Pinch gesture
-        hammer.on('pinchmove', (e) => {
-            if (!activeSticker) return;
-
-            activeSticker.scale = Math.max(0.5, Math.min(3, activeSticker.scale * e.scale)); // Constrain scaling
-            drawAllStickers();
+        canvas.addEventListener("pointerup", () => {
+            stickers.forEach(sticker => (sticker.isActive = false));
         });
 
-        // Helper: Convert event coordinates to canvas coordinates
-        function getEventPosition(clientX, clientY) {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
+        // Open the sticker selection pop-up
+        function openPopup() {
+            const popup = document.getElementById("stickerPopup");
+            const selectionContainer = document.getElementById("stickerSelection");
+            selectionContainer.innerHTML = ''; // Clear previous selections
+
+            stickers.forEach((sticker, index) => {
+                const imgElement = document.createElement("img");
+                imgElement.src = stickerImages[index];
+                imgElement.alt = `Sticker ${index + 1}`;
+                imgElement.onclick = () => {
+                    addSticker(sticker);
+                    closePopup();
+                };
+                selectionContainer.appendChild(imgElement);
+            });
+
+            popup.style.display = 'flex';
         }
 
-        // Initial setup
-        resizeCanvas();
+        // Close the pop-up
+        function closePopup() {
+            document.getElementById("stickerPopup").style.display = 'none';
+        }
+
+        // Add the selected sticker to canvas
+        function addSticker(sticker) {
+            const newSticker = {
+                ...sticker,
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+            };
+            stickers.push(newSticker);
+            drawAllStickers();
+        }
+
+        // Open the sticker selection pop-up after page load
+        openPopup();
     </script>
 </body>
 </html>
