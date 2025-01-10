@@ -7,98 +7,51 @@
     <style>
         body {
             margin: 0;
-            overflow: hidden;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
         canvas {
             display: block;
         }
-        /* Pop-up container styles */
-        .popup {
+        /* Sticker selection box */
+        #stickerBox {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: none;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
             justify-content: center;
             align-items: center;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+            visibility: visible;
+            opacity: 1;
         }
-        .popup-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .popup-content img {
+        #stickerBox img {
             width: 50px;
             height: 50px;
             margin: 10px;
             cursor: pointer;
         }
-        .popup-content button {
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-
-    <!-- Pop-up container -->
-    <div class="popup" id="stickerPopup">
-        <div class="popup-content">
-            <h3>Select Stickers</h3>
-            <div id="stickerSelection">
-                <!-- Sticker images will be dynamically added here -->
-            </div>
-            <button onclick="closePopup()">Close</button>
-        </div>
+    
+    <!-- Sticker selection box -->
+    <div id="stickerBox">
+        <img src="1.png" alt="Sticker 1" onclick="setCurrentSticker('1.png')" />
+        <img src="2.png" alt="Sticker 2" onclick="setCurrentSticker('2.png')" />
+        <img src="3.png" alt="Sticker 3" onclick="setCurrentSticker('3.png')" />
     </div>
 
     <script>
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
 
-        // Sticker data
-        const stickers = [
-            {
-                x: 100,
-                y: 100,
-                width: 100,
-                height: 100,
-                scale: 1,
-                rotation: 0,
-                image: null,
-                isActive: false,
-            },
-            // Add more stickers with different images
-            {
-                x: 200,
-                y: 100,
-                width: 100,
-                height: 100,
-                scale: 1,
-                rotation: 0,
-                image: null,
-                isActive: false,
-            }
-        ];
-
-        // Preload images for stickers
-        const stickerImages = ["1.png", "2.png"]; // Replace with your actual image sources
-        stickers.forEach((sticker, index) => {
-            const img = new Image();
-            img.src = stickerImages[index];
-            img.onload = () => {
-                sticker.image = img;
-                drawAllStickers(); // Redraw canvas after loading
-            };
-        });
-
-        // Responsive canvas
+        // Resize canvas to fit window
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -107,94 +60,110 @@
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();
 
-        // Draw all stickers
+        // Sticker data structure
+        const stickers = [];
+        let currentStickerSrc = null; // Variable to store the current sticker being selected
+        let activeSticker = null; // Variable to store the active sticker being transformed
+        let startX, startY, startAngle, startScale;
+
+        // Draw all stickers on the canvas
         function drawAllStickers() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             stickers.forEach(sticker => drawSticker(sticker));
         }
 
-        // Draw individual sticker
+        // Draw a single sticker
         function drawSticker(sticker) {
-            if (!sticker.image) return; // Skip if the image is not loaded
-            ctx.save();
-            ctx.translate(sticker.x, sticker.y);
-            ctx.rotate((sticker.rotation * Math.PI) / 180);
-            ctx.scale(sticker.scale, sticker.scale);
-            ctx.drawImage(
-                sticker.image,
-                -sticker.width / 2,
-                -sticker.height / 2,
-                sticker.width,
-                sticker.height
-            );
-            ctx.restore();
+            const img = new Image();
+            img.src = sticker.src;
+            img.onload = () => {
+                ctx.save();
+                ctx.translate(sticker.x, sticker.y);
+                ctx.rotate((sticker.rotation * Math.PI) / 180);
+                ctx.scale(sticker.scale, sticker.scale);
+                ctx.drawImage(img, -sticker.width / 2, -sticker.height / 2, sticker.width, sticker.height);
+                ctx.restore();
+            };
         }
 
-        // Example interaction logic
+        // Set the current sticker to be placed on the canvas
+        function setCurrentSticker(src) {
+            currentStickerSrc = src;
+            alert("Click anywhere on the canvas to place the sticker.");
+        }
+
+        // Add a new sticker to the canvas
+        canvas.addEventListener("click", (e) => {
+            if (!currentStickerSrc) return; // If no sticker is selected, do nothing
+
+            const x = e.clientX;
+            const y = e.clientY;
+            const sticker = {
+                x: x,
+                y: y,
+                width: 100,
+                height: 100,
+                scale: 1,
+                rotation: 0,
+                src: currentStickerSrc,
+                isActive: false,
+            };
+            stickers.push(sticker);
+            drawAllStickers();
+        });
+
+        // Handle sticker transformations
         canvas.addEventListener("pointerdown", (e) => {
             const x = e.clientX;
             const y = e.clientY;
-            stickers.forEach(sticker => {
-                const withinX = x >= sticker.x && x <= sticker.x + sticker.width;
-                const withinY = y >= sticker.y && y <= sticker.y + sticker.height;
-                sticker.isActive = withinX && withinY;
-            });
-        });
+            activeSticker = null;
 
-        canvas.addEventListener("pointermove", (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
+            // Check if the pointer is within any sticker's bounds
             stickers.forEach(sticker => {
-                if (sticker.isActive) {
-                    sticker.x = x;
-                    sticker.y = y;
-                    drawAllStickers();
+                const withinX = x >= sticker.x - sticker.width / 2 && x <= sticker.x + sticker.width / 2;
+                const withinY = y >= sticker.y - sticker.height / 2 && y <= sticker.y + sticker.height / 2;
+                if (withinX && withinY) {
+                    activeSticker = sticker;
+                    startX = x;
+                    startY = y;
+                    startAngle = sticker.rotation;
+                    startScale = sticker.scale;
+                    sticker.isActive = true;
                 }
             });
         });
 
-        canvas.addEventListener("pointerup", () => {
-            stickers.forEach(sticker => (sticker.isActive = false));
+        // Move, rotate, and scale the active sticker
+        canvas.addEventListener("pointermove", (e) => {
+            if (!activeSticker) return; // If no sticker is active, do nothing
+
+            const x = e.clientX;
+            const y = e.clientY;
+
+            // Calculate movement
+            if (e.shiftKey) { // Hold shift for rotation
+                const dx = x - startX;
+                const dy = y - startY;
+                activeSticker.rotation = startAngle + Math.atan2(dy, dx) * (180 / Math.PI);
+            } else if (e.ctrlKey) { // Hold control for scaling
+                const dx = x - startX;
+                const dy = y - startY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                activeSticker.scale = startScale + (distance / 100);
+            } else { // Normal move
+                activeSticker.x = x;
+                activeSticker.y = y;
+            }
+
+            drawAllStickers();
         });
 
-        // Open the sticker selection pop-up
-        function openPopup() {
-            const popup = document.getElementById("stickerPopup");
-            const selectionContainer = document.getElementById("stickerSelection");
-            selectionContainer.innerHTML = ''; // Clear previous selections
-
-            stickers.forEach((sticker, index) => {
-                const imgElement = document.createElement("img");
-                imgElement.src = stickerImages[index];
-                imgElement.alt = `Sticker ${index + 1}`;
-                imgElement.onclick = () => {
-                    addSticker(sticker);
-                    closePopup();
-                };
-                selectionContainer.appendChild(imgElement);
-            });
-
-            popup.style.display = 'flex';
-        }
-
-        // Close the pop-up
-        function closePopup() {
-            document.getElementById("stickerPopup").style.display = 'none';
-        }
-
-        // Add the selected sticker to canvas
-        function addSticker(sticker) {
-            const newSticker = {
-                ...sticker,
-                x: canvas.width / 2,
-                y: canvas.height / 2,
-            };
-            stickers.push(newSticker);
-            drawAllStickers();
-        }
-
-        // Open the sticker selection pop-up after page load
-        openPopup();
+        // Deactivate the sticker when pointer is up
+        canvas.addEventListener("pointerup", () => {
+            if (activeSticker) {
+                activeSticker.isActive = false;
+            }
+        });
     </script>
 </body>
 </html>
