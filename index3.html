@@ -25,7 +25,7 @@
     </style>
 </head>
 <body>
-    <h1>20:51</h1>
+    <h1>20:54</h1>
     <div id="sticker"></div>
     <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
     <script>
@@ -48,17 +48,23 @@
         hammer.get("rotate").set({ enable: true });
         hammer.get("pinch").recognizeWith("rotate");
 
-        // Pan Gesture
         hammer.on("panmove", (e) => {
             const newX = transform.translate.x + e.deltaX;
             const newY = transform.translate.y + e.deltaY;
-
-            // Constrain movement to stay within viewport
-            transform.translate.x = Math.min(Math.max(newX, 0), window.innerWidth - sticker.offsetWidth);
-            transform.translate.y = Math.min(Math.max(newY, 0), window.innerHeight - sticker.offsetHeight);
-
+        
+            // Constrain movement within the viewport
+            transform.translate.x = Math.min(
+                Math.max(newX, 0),
+                window.innerWidth - sticker.offsetWidth
+            );
+            transform.translate.y = Math.min(
+                Math.max(newY, 0),
+                window.innerHeight - sticker.offsetHeight
+            );
+        
             updateTransform();
         });
+
 
         hammer.on("panend", () => {
             // Update base translation at the end of the gesture
