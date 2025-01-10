@@ -3,168 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas Stickers</title>
+    <title>Instagram Stories Sticker Functionality</title>
     <style>
         body {
-            margin: 0;
-            overflow: hidden;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
         }
-        canvas {
-            display: block;
-        }
-        .sticker-container {
-            position: absolute;
-            top: 50px;
-            left: 50px;
-            display: none;
-            background: rgba(255, 255, 255, 0.9);
+        #story-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
             border: 1px solid #ccc;
-            padding: 10px;
-            max-height: 300px;
-            overflow-y: auto;
+            background-color: white;
         }
-        .sticker-option {
-            width: 100px;
-            height: 100px;
-            margin: 5px;
-            cursor: pointer;
+        #story-canvas {
+            width: 100%;
+            height: 100%;
         }
-        .sticker-button {
+        .sticker {
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            cursor: move;
             position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <div class="sticker-container" id="stickerContainer">
-        <div class="sticker-option" data-sticker="1">
-            <img src="1.png" alt="Sticker 1" style="width: 100%; height: 100%; object-fit: cover;">
-        </div>
-        <!-- Add more stickers here -->
-        <div class="sticker-option" data-sticker="2">
-            <img src="2.png" alt="Sticker 2" style="width: 100%; height: 100%; object-fit: cover;">
-        </div>
-    </div>
-    <button class="sticker-button" id="openStickerContainer">Select Sticker</button>
 
-    <script>
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
-        const stickerContainer = document.getElementById("stickerContainer");
-        const openStickerContainerButton = document.getElementById("openStickerContainer");
+<div id="story-container">
+    <canvas id="story-canvas" width="400" height="600"></canvas>
+    <div id="stickers"></div>
+</div>
 
-        // Sticker data
-        const stickers = [];
+<script>
+    const canvas = document.getElementById('story-canvas');
+    const ctx = canvas.getContext('2d');
 
-        // Preload images (Add more stickers if necessary)
-        const preloadStickerImages = ["1.png", "2.png"]; // Add more sticker sources
-        preloadStickerImages.forEach((src, index) => {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => {
-                stickers.push({
-                    x: 100,
-                    y: 100,
-                    width: 100,
-                    height: 100,
-                    scale: 1,
-                    rotation: 0,
-                    image: img,
-                    isActive: false,
-                });
-                drawAllStickers(); // Redraw canvas after loading
-            };
+    // Load an example image
+    function drawImage(src) {
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = src; // Change this to your image path
+    }
+
+    // Function to create a sticker
+    function createSticker(text) {
+        const sticker = document.createElement('div');
+        sticker.className = 'sticker';
+        sticker.innerText = text;
+
+        // Set initial position for the sticker
+        sticker.style.left = '10px';
+        sticker.style.top = '10px';
+
+        // Make the sticker draggable
+        sticker.draggable = true;
+
+        sticker.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', text);
+            e.dataTransfer.effectAllowed = 'move';
+        };
+
+        document.getElementById('stickers').appendChild(sticker);
+        
+        // Handle dragging and dropping on the canvas
+        sticker.addEventListener('dragend', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left - (sticker.offsetWidth / 2);
+            const y = e.clientY - rect.top - (sticker.offsetHeight / 2);
+            
+            // Draw the sticker text on the canvas at the drop location
+            ctx.fillText(text, x, y);
+            
+            // Remove the sticker from the DOM after placing it on the canvas
+            sticker.remove();
         });
+    }
 
-        // Responsive canvas
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            drawAllStickers();
-        }
-        window.addEventListener("resize", resizeCanvas);
-        resizeCanvas();
+    // Example usage
+    drawImage('https://via.placeholder.com/400x600'); // Load your story image
+    createSticker('Hello!'); // Create a sample sticker
 
-        // Draw all stickers
-        function drawAllStickers() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            stickers.forEach(sticker => drawSticker(sticker));
-        }
+</script>
 
-        // Draw individual sticker
-        function drawSticker(sticker) {
-            if (!sticker.image) return; // Skip if the image is not loaded
-            ctx.save();
-            ctx.translate(sticker.x, sticker.y);
-            ctx.rotate((sticker.rotation * Math.PI) / 180);
-            ctx.scale(sticker.scale, sticker.scale);
-            ctx.drawImage(
-                sticker.image,
-                -sticker.width / 2,
-                -sticker.height / 2,
-                sticker.width,
-                sticker.height
-            );
-            ctx.restore();
-        }
-
-        // Example interaction logic for moving stickers
-        canvas.addEventListener("pointerdown", (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
-            stickers.forEach(sticker => {
-                const withinX = x >= sticker.x && x <= sticker.x + sticker.width;
-                const withinY = y >= sticker.y && y <= sticker.y + sticker.height;
-                sticker.isActive = withinX && withinY;
-            });
-        });
-
-        canvas.addEventListener("pointermove", (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
-            stickers.forEach(sticker => {
-                if (sticker.isActive) {
-                    sticker.x = x;
-                    sticker.y = y;
-                    drawAllStickers();
-                }
-            });
-        });
-
-        canvas.addEventListener("pointerup", () => {
-            stickers.forEach(sticker => (sticker.isActive = false));
-        });
-
-        // Open the sticker container when the button is clicked
-        openStickerContainerButton.addEventListener("click", () => {
-            stickerContainer.style.display = 'block';
-        });
-
-        // Close the sticker container when a sticker is selected
-        stickerContainer.addEventListener("click", (e) => {
-            const stickerOption = e.target.closest('.sticker-option');
-            if (!stickerOption) return;
-
-            const stickerIndex = stickerOption.getAttribute('data-sticker') - 1;
-            const selectedSticker = stickers[stickerIndex];
-
-            // Add selected sticker to the canvas
-            stickers.push({
-                ...selectedSticker,
-                x: window.innerWidth / 2,  // Position it at the center of the canvas
-                y: window.innerHeight / 2,
-                isActive: false
-            });
-            drawAllStickers();
-            stickerContainer.style.display = 'none';  // Close the container
-        });
-    </script>
 </body>
 </html>
